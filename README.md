@@ -4,8 +4,8 @@ A DeepSeek Harness host plugin that attaches a **stable per-conversation session
 header** to model requests routed to configured providers.
 
 The header name is **configurable**, so one plugin serves any backend that
-implements conversation-affinity routing via a request header — OpenCode's
-`x-opencode-session`, Olla's `X-Olla-Session-ID`, and others.
+implements conversation-affinity routing via a request header — SMG's
+`X-SMG-Routing-Key`, OpenCode's `x-opencode-session`, and others.
 
 ## Why
 
@@ -18,6 +18,18 @@ backend, discarding the cache every turn.
 The value only has to be opaque and stable per conversation, so the plugin
 reuses the DSH session id that already travels with each model call — the same
 identity the official DeepSeek adapter sends as `x-deepseek-harness-session-id`.
+
+### Why the header is injected rather than derived
+
+A relay's alternative to an explicit key is deriving stickiness from a **prefix
+hash** of the prompt. That approach **does not work for DSH**, and it was
+verified experimentally rather than assumed: DSH sends a large *shared system
+prompt*, so distinct sessions hash to the same value and pin to the same
+backend. Extending the hashed prefix cannot fix it, because the shared preamble
+*is* the hash input.
+
+The plugin is therefore not an optimisation on top of a working router — it is
+what makes per-conversation pinning work at all.
 
 ## Install
 
@@ -43,17 +55,17 @@ On boot you should see:
 
 ## Configuration
 
-Each profile row may set a `config`:
+The row above is inserted by this package's own bundle layer with the defaults
+shown. A profile customises it with an **id-targeted `config` override**, never
+a second `insert`:
 
 ```yaml
-- insert:
-    - id: llm-session-header
-      name: dsh-llm-session-header
-      config:
-        headerName: x-opencode-session   # default
-        providers: [opencode, opencode-go]
-        mode: session-id
-        debug: false
+- id: llm-session-header
+  config:
+    headerName: x-opencode-session   # default
+    providers: [opencode, opencode-go]
+    mode: session-id
+    debug: false
 ```
 
 | Field | Default | Meaning |
@@ -70,8 +82,8 @@ Each profile row may set a `config`:
 
 ```yaml
 config:
-  headerName: X-Olla-Session-ID
-  providers: [olla]
+  headerName: X-SMG-Routing-Key
+  providers: [b70-smg]
 ```
 
 **A map** — each route names its own header, overriding `headerName`:
@@ -81,29 +93,51 @@ config:
   providers:
     opencode: x-opencode-session
     opencode-go: x-opencode-session
-    olla: X-Olla-Session-ID
+    b70-smg: X-SMG-Routing-Key
 ```
 
 A list and a map cannot be mixed. The map form is how **one plugin instance
-serves multiple backends with different header names**.
+serves multiple backends with different header names**. It is also what makes
+swapping the router behind a route a one-line config change:
 
-### Serving OpenCode and Olla together
+```diff
+-      b70-olla: X-Olla-Session-ID
++      b70-smg: X-SMG-Routing-Key
+```
+
+### Serving OpenCode and SMG together
+
+The map form is what the production profile actually uses — one row covering
+every route, each with the header name its own backend expects:
 
 ```yaml
-- insert:
-    - id: llm-session-header
-      name: dsh-llm-session-header
-      config:
-        providers:
-          opencode: x-opencode-session
-          opencode-go: x-opencode-session
-          opencode-go-v41: x-opencode-session
-          b70-olla: X-Olla-Session-ID
-        mode: session-id
+- id: llm-session-header
+  config:
+    headerName: x-opencode-session
+    providers:
+      opencode: x-opencode-session
+      opencode-go: x-opencode-session
+      opencode-go-v41: x-opencode-session
+      b70-smg: X-SMG-Routing-Key
+    mode: session-id
+    debug: false
 ```
 
 > **Note:** the `config` of a patch row **replaces wholesale** — it does not
-> merge. Restate every key you want to keep.
+> merge. Restate every key you want to keep, `headerName` included.
+
+> **Do not `insert` this row from a profile patch.** The package ships its own
+> `dsh.bundle` layer that already inserts the `llm-session-header` row, so a
+> second `insert` at the profile layer produces a **duplicate row id and a boot
+> failure**. Use the id-targeted `config` form above, exactly as shown.
+
+### Verifying the deployed composition
+
+```bash
+dsh --profile <profile> --dump-config | grep -A11 "id: llm-session-header"
+```
+
+Expect exactly **one** row, carrying `name: dsh-llm-session-header`.
 
 ## How it works
 
@@ -123,6 +157,23 @@ restored.
 Requests that are not routed to a configured provider, requests with no
 `sessionId`, and model-discovery requests pass through untouched.
 
+## Verifying a live deployment
+
+The header is *injected* into an outgoing request, so a passing unit test is not
+proof that a deployed router is receiving it. Check the router's own state.
+
+With SMG, `GET <smg>/workers` reports a non-zero `load` per worker — the count of
+routing keys currently assigned to it. `load` can only become non-zero if a
+routing key was actually received, which makes it a direct end-to-end check:
+
+```bash
+curl -s http://<smg-host>:40114/workers | python3 -m json.tool
+```
+
+A response that shows `"load": 0` on every worker while sessions are streaming
+means the header is **not** arriving. SMG also echoes `X-SMG-Routed-Worker-Id`
+on responses, which identifies which backend served a given request.
+
 ## Notes and limitations
 
 - **Provider keys are matched case-sensitively** against `options.provider`.
@@ -140,11 +191,30 @@ Requests that are not routed to a configured provider, requests with no
 ## Development
 
 ```bash
-npm test          # unit + real-boot integration
+npm test
 ```
 
+| Layer | File | What it proves |
+|---|---|---|
+| Unit | `tests/test.mjs` | Config resolution, value modes, fetch injection, stream wrapping |
+| Integration | `tests/integration.mjs` | Real `fetch` patch + **real HTTP** to a local mock; per-route headers |
+| Coexistence | `tests/coexistence.mjs` | Byte-parity with the original, and both mounted together |
+
 The integration test boots the plugin, patches `fetch`, drives a real HTTP
-request through a local mock, and asserts per-provider header routing.
+request through a local mock, and asserts per-route header routing. It covers
+the shipping `b70-smg` route by name, plus `x-opencode-session` parity.
+
+> **Never point a test at production DSH.** Use an isolated `DSH_HOME` under a
+> **durable** path (not `/tmp`, which can be swept between commands), and set it
+> in the *same* shell invocation as the command:
+>
+> ```bash
+> ISO=~/dsh-build/iso-home
+> DSH_HOME="$ISO" dsh plugin --profile boot-test add /abs/path/to/this/plugin
+> ```
+>
+> If the variable is lost, `DSH_HOME` silently falls back to `~/.dsh` and the
+> command writes to the production profile. Verify isolation afterwards.
 
 ## Credits
 

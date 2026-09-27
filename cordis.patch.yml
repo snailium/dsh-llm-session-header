@@ -7,7 +7,10 @@
 #
 #   headerName: string   the header to attach. Defaults to 'x-opencode-session'
 #                        so an existing OpenCode installation is unchanged.
-#                        Set to 'X-Olla-Session-ID' for Olla.
+#                        This row only inserts; a profile that needs a different
+#                        header per route should NOT insert again (that would
+#                        duplicate the row id and break boot) — override the
+#                        config of this id instead.
 #
 #   providers:           which provider route keys get the header, and which
 #                        header each one gets. Two shapes are accepted:
@@ -20,7 +23,7 @@
 #                            providers:
 #                              opencode: x-opencode-session
 #                              opencode-go: x-opencode-session
-#                              olla: X-Olla-Session-ID
+#                              b70-smg: X-SMG-Routing-Key
 #
 #                        A list and a map cannot be mixed. Defaults to the
 #                        pi-ai catalog ids ['opencode', 'opencode-go'].

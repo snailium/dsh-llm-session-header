@@ -9,7 +9,9 @@ import assert from 'node:assert/strict'
 import http from 'node:http'
 
 const ORIG = '<dsh-home>/profiles/web/node_modules/dsh-opencode-session/lib/index.js'
-const MINE = '<checkout>/lib/index.js'
+// Resolve the plugin relative to this file so the suite works from a checkout
+// at any path (it previously hardcoded the build directory).
+const MINE = new URL('../lib/index.js', import.meta.url).href
 
 const received = []
 const server = http.createServer((req, res) => {
@@ -98,6 +100,7 @@ const OPTS = { providers: ['opencode', 'opencode-go'], mode: 'session-id' }
       opencode: 'x-opencode-session',
       'opencode-go': 'x-opencode-session',
       'b70-olla': 'X-Olla-Session-ID',
+      'b70-smg': 'X-SMG-Routing-Key',
     },
     mode: 'session-id',
   })
@@ -106,11 +109,14 @@ const OPTS = { providers: ['opencode', 'opencode-go'], mode: 'session-id' }
   const oc = received.at(-1)
   await drive(ctx, 'b70-olla', 'S2')
   const olla = received.at(-1)
+  await drive(ctx, 'b70-smg', 'S2')
+  const smg = received.at(-1)
 
   // Two plugins patched fetch; the inner one must still add the Olla header,
   // and the OpenCode header must be present exactly once with the right value.
   console.log(`coexist   both loaded, oc     -> x-opencode-session=${oc['x-opencode-session']}`)
   console.log(`coexist   both loaded, olla   -> X-Olla-Session-ID=${olla['x-olla-session-id']}`)
+  console.log(`coexist   both loaded, smg    -> X-SMG-Routing-Key=${smg['x-smg-routing-key']}`)
 
   assert.equal(oc['x-opencode-session'], 'S2', 'opencode header must survive double-patching')
 
@@ -125,6 +131,11 @@ const OPTS = { providers: ['opencode', 'opencode-go'], mode: 'session-id' }
       'Expected: the outer fetch patch wins. Run the new plugin ALONE instead ' +
       'of alongside the original.')
   }
+  // The SMG route is not served by the original plugin at all, so the new
+  // plugin must inject it regardless of mount order.
+  assert.equal(smg['x-smg-routing-key'], 'S2',
+    'SMG route must receive X-SMG-Routing-Key while both plugins are mounted')
+  console.log('OK  SMG route served by the new plugin with both mounted')
 }
 
 server.close()

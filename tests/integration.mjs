@@ -13,7 +13,9 @@ import http from 'node:http'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 
-const PLUGIN = '<checkout>/lib/index.js'
+// Resolve the plugin relative to this file so the suite works from a checkout
+// at any path (it previously hardcoded the build directory).
+const PLUGIN = new URL('../lib/index.js', import.meta.url).href
 
 // ---------------------------------------------------------------- mock sink
 const received = []
@@ -62,6 +64,12 @@ const ctx = makeCtx()
 mod.apply(ctx, {
   headerName: 'x-opencode-session',
   providers: {
+    // The route that is actually shipping: SMG (Shepherd Model Gateway) on
+    // .101 reads the literal X-SMG-Routing-Key as its sticky routing key.
+    'b70-smg': 'X-SMG-Routing-Key',
+    // Historical/generality cases: an arbitrary header name on an arbitrary
+    // route. b70-olla is kept because it is the case that caught the
+    // hardcoded-header-name bug this plugin was forked to fix.
     'mock-olla': 'X-Olla-Session-ID',
     'mock-oc': 'x-opencode-session',
   },
@@ -92,8 +100,19 @@ async function driveRequest(provider, sessionId) {
 }
 
 // ------------------------------------------------------------------- asserts
-await driveRequest('mock-olla', 'sess-olla-1')
+// The shipping route first: SMG's sticky routing key.
+await driveRequest('b70-smg', 'sess-smg-1')
 let r = received.at(-1)
+assert.equal(r.headers['x-smg-routing-key'], 'sess-smg-1',
+  'SMG route must receive X-SMG-Routing-Key')
+assert.equal(r.headers['x-opencode-session'], undefined,
+  'SMG route must NOT receive the opencode header')
+assert.equal(r.headers['x-olla-session-id'], undefined,
+  'SMG route must NOT receive the Olla header')
+console.log(`OK  b70-smg route -> X-SMG-Routing-Key: ${r.headers['x-smg-routing-key']}`)
+
+await driveRequest('mock-olla', 'sess-olla-1')
+r = received.at(-1)
 assert.equal(r.headers['x-olla-session-id'], 'sess-olla-1',
   'Olla route must receive X-Olla-Session-ID')
 assert.equal(r.headers['x-opencode-session'], undefined,

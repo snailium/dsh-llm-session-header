@@ -1,7 +1,7 @@
 {
   "name": "dsh-llm-session-header",
   "version": "0.1.0",
-  "description": "DeepSeek Harness plugin: attaches a stable per-conversation session header to model requests routed to configured providers. Header name is configurable, so one plugin serves OpenCode (x-opencode-session), Olla (X-Olla-Session-ID), and any other header-based affinity router.",
+  "description": "DeepSeek Harness plugin: attaches a stable per-conversation session header to model requests routed to configured providers. Header name is configurable, so one plugin serves SMG (X-SMG-Routing-Key), OpenCode (x-opencode-session), and any other header-based affinity router.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -28,7 +28,10 @@
     "prompt-cache",
     "kv-cache",
     "x-opencode-session",
+    "x-smg-routing-key",
     "opencode",
+    "smg",
+    "shepherd-model-gateway",
     "olla",
     "llm",
     "routing"
