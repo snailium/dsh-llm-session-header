@@ -1,0 +1,50 @@
+# dsh-llm-session-header layer.
+#
+# Adds one host plugin row that attaches a stable per-conversation session
+# header to model requests routed to configured providers.
+#
+# Configuration (row `config`, all optional):
+#
+#   headerName: string   the header to attach. Defaults to 'x-opencode-session'
+#                        so an existing OpenCode installation is unchanged.
+#                        Set to 'X-Olla-Session-ID' for Olla.
+#
+#   providers:           which provider route keys get the header, and which
+#                        header each one gets. Two shapes are accepted:
+#
+#                          list  -> every listed route uses `headerName`
+#                            providers: [opencode, opencode-go]
+#
+#                          map   -> each route names its own header, which
+#                                   overrides `headerName` per route
+#                            providers:
+#                              opencode: x-opencode-session
+#                              opencode-go: x-opencode-session
+#                              olla: X-Olla-Session-ID
+#
+#                        A list and a map cannot be mixed. Defaults to the
+#                        pi-ai catalog ids ['opencode', 'opencode-go'].
+#
+#   mode: 'session-id' | 'uuid'
+#                        header value derivation.
+#                        'session-id' (default): reuse the DSH session id that
+#                        already travels with each model call — stable across
+#                        turns and restarts, unique per conversation.
+#                        'uuid': a process-stable random uuid per DSH session.
+#
+#   debug: true|false    log every streamed call that receives a header
+#                        (via ctx.logger, i.e. the dsh process console).
+#
+#   debugFile: path      optional: append one JSON line per streamed call that
+#                        receives a header to the given file (handy when the
+#                        process console is not visible).
+- insert:
+    - id: llm-session-header
+      name: dsh-llm-session-header
+      config:
+        headerName: x-opencode-session
+        providers:
+          - opencode
+          - opencode-go
+        mode: session-id
+        debug: false
