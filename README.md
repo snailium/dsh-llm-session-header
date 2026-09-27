@@ -160,19 +160,30 @@ Requests that are not routed to a configured provider, requests with no
 ## Verifying a live deployment
 
 The header is *injected* into an outgoing request, so a passing unit test is not
-proof that a deployed router is receiving it. Check the router's own state.
+proof that a deployed router is receiving it. Check the **routing decider**, not a
+counter.
 
-With SMG, `GET <smg>/workers` reports a non-zero `load` per worker — the count of
-routing keys currently assigned to it. `load` can only become non-zero if a
-routing key was actually received, which makes it a direct end-to-end check:
+SMG echoes the worker it chose on every response:
 
-```bash
-curl -s http://<smg-host>:40114/workers | python3 -m json.tool
+```
+x-smg-routed-worker-id: http://<worker-host>:<port>
 ```
 
-A response that shows `"load": 0` on every worker while sessions are streaming
-means the header is **not** arriving. SMG also echoes `X-SMG-Routed-Worker-Id`
-on responses, which identifies which backend served a given request.
+Send several requests carrying the **same** routing key and confirm this header
+**always names the same worker**. That is stable per-key assignment — the exact
+property this plugin exists to produce — and it is directly observed rather than
+inferred.
+
+- Same worker every time → stickiness works → the header was received.
+- Worker varies across requests → the key is not driving assignment.
+
+> **Do not verify with `GET <smg>/workers`' `load` field.** It is a single field
+> that does not distinguish "assigned routing keys" from "in-flight requests", and
+> on current builds it renders the latter — so it reads `0` whenever the gateway is
+> idle, including while sticky routing is working correctly. Relying on it produces
+> both false negatives and (as happened here once) false positives. See
+> [docs/smg-load-field-correction.md](docs/smg-load-field-correction.md) for the
+> measurement and the reasoning.
 
 ## Notes and limitations
 
