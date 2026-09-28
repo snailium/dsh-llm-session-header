@@ -1,14 +1,16 @@
 # Correction: SMG's `load` field does not prove routing-key injection
 
 **Date:** 2026-09-27
-**Supersedes:** the "decisive evidence" section of `smg-verified.md` (2026-09-19),
-and the open item it created in `HANDOVER-llm-session-header.md` §7.
+**Supersedes:** an earlier internal verification note (2026-09-19) that treated a
+non-zero `/workers` `load` as proof the injected header had reached SMG, and the
+deployment handover that repeated it as an acceptance test.
 
 ---
 
 ## 1. What was believed
 
-`smg-verified.md` recorded this as proof that the plugin's injected header reaches SMG:
+An earlier internal note recorded this as proof that the plugin's injected header
+reaches SMG:
 
 ```
 SMG /workers:
