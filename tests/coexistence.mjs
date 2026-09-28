@@ -7,11 +7,43 @@
 
 import assert from 'node:assert/strict'
 import http from 'node:http'
+import { createRequire } from 'node:module'
+import { existsSync } from 'node:fs'
 
-const ORIG = '<dsh-home>/profiles/web/node_modules/dsh-opencode-session/lib/index.js'
 // Resolve the plugin relative to this file so the suite works from a checkout
 // at any path (it previously hardcoded the build directory).
 const MINE = new URL('../lib/index.js', import.meta.url).href
+
+// The reference implementation this plugin was derived from. It is an optional
+// peer for this test only. Resolve it from wherever node can find it, then from
+// a profile's node_modules under this dsh home, and SKIP the comparison only if
+// it genuinely is not present -- never hardcode one machine's install path.
+const require_ = createRequire(import.meta.url)
+
+function resolveOrig() {
+  for (const spec of ['dsh-opencode-session/lib/index.js', 'dsh-opencode-session']) {
+    try {
+      return require_.resolve(spec)
+    } catch { /* try the next spec, then the profile fallback */ }
+  }
+  const dshHome = process.env.DSH_HOME
+  if (dshHome) {
+    const guesses = ['profiles/web', 'profiles/default'].map((p) =>
+      `${dshHome}/${p}/node_modules/dsh-opencode-session/lib/index.js`)
+    for (const guess of guesses) if (existsSync(guess)) return guess
+  }
+  return null
+}
+
+const ORIG = resolveOrig()
+
+if (ORIG === null) {
+  console.log('SKIP: dsh-opencode-session is not installed; cannot compare behaviour.')
+  console.log('      Install it (or set DSH_HOME to a profile that has it) to run this check.')
+  console.log('\nCOEXISTENCE: skipped')
+  process.exit(0)
+}
+console.log(`reference: ${ORIG}`)
 
 const received = []
 const server = http.createServer((req, res) => {
