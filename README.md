@@ -7,6 +7,12 @@ The header name is **configurable**, so one plugin serves any backend that
 implements conversation-affinity routing via a request header — SMG's
 `X-SMG-Routing-Key`, OpenCode's `x-opencode-session`, and others.
 
+| | |
+|---|---|
+| Verified against | dsh `0.1.7-rc.2` (session format 4) |
+| Requires | Node `^22.19 \|\| >=24`; schemastery `>=3.18.4` for the settings card |
+| On older dsh | the plugin loads and injects as usual; the settings card is simply absent |
+
 ## Why
 
 Some LLM relays pin every request sharing the same session header value to the
@@ -104,6 +110,24 @@ swapping the router behind a route a one-line config change:
 -      b70-olla: X-Olla-Session-ID
 +      b70-smg: X-SMG-Routing-Key
 ```
+
+### Editing from the Web UI
+
+The plugin ships a settings card, so the whole mapping is editable from
+**Plugins → Session Header Injection** without touching YAML:
+
+- the default header name, the value mode and the debug flag;
+- the route table itself — **Add route** appends a row, each row names a route
+  key and (optionally) its own header, and **Remove** drops one.
+
+Leave a row's header blank to inherit the default header name. Saving writes the
+whole `providers` field in one fenced revision-checked mutation, so a concurrent
+edit elsewhere in the profile is rejected rather than silently overwritten.
+
+Saves take effect **on the next model call — no restart**. Every field is
+declared `.volatile()`, so the Host rewrites the live config reference in place
+instead of remounting the plugin; the route table is re-resolved on each
+`llm/stream` call.
 
 ### Serving OpenCode and SMG together
 
@@ -208,12 +232,17 @@ npm test
 | Layer | File | What it proves |
 |---|---|---|
 | Unit | `tests/test.mjs` | Config resolution, value modes, fetch injection, stream wrapping |
+| Config updates | `tests/config-update.test.mjs` | A live save reaches a running instance through volatile references |
 | Integration | `tests/integration.mjs` | Real `fetch` patch + **real HTTP** to a local mock; per-route headers |
 | Coexistence | `tests/coexistence.mjs` | Byte-parity with the original, and both mounted together |
 
 The integration test boots the plugin, patches `fetch`, drives a real HTTP
 request through a local mock, and asserts per-route header routing. It covers
 the shipping `b70-smg` route by name, plus `x-opencode-session` parity.
+
+To render the settings card in a throwaway instance (never production), see the
+workspace skill `.dsh/skills/dsh-plugin-settings-card/`; it provisions an
+isolated `DSH_HOME`, a prefix with its own dsh, and a mock provider.
 
 > **Never point a test at production DSH.** Use an isolated `DSH_HOME` under a
 > **durable** path (not `/tmp`, which can be swept between commands), and set it
