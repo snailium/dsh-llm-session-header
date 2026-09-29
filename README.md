@@ -124,12 +124,27 @@ swapping the router behind a route a one-line config change:
 
 ### Editing from the Web UI
 
-The plugin ships a settings card, so the whole mapping is editable from
-**Plugins → Session Header Injection** without touching YAML:
+The plugin ships a settings card, so the whole mapping is editable from the
+Plugins page without touching YAML:
+
+**Plugins → Installed → dsh-llm-session-header → the `llm-session-header`
+component → Configure.**
+
+The card edits:
 
 - the default header name, the value mode and the debug flag;
 - the route table itself — **Add route** appends a row, each row names a route
   key and (optionally) its own header, and **Remove** drops one.
+
+> **Why it lives on the row, not in the Official list.** The page's slot contract
+> marks `plugins.item` as *"OCCUPIED by the official settings pages, one companion
+> package per host-plane namespace; a bundle's configuration belongs in
+> `plugins.bundle.config` or `plugins.row.config` instead"*. A third-party bundle
+> therefore registers into **`plugins.row.config`**, keyed
+> `dsh-llm-session-header#llm-session-header`, which is what puts a **Configure**
+> button on the row. Our settings namespace *is* the row id, so the row is the
+> right owner. (Verified on both dsh 0.1.7-rc.2 and 0.2.0-rc.2, whose slot
+> contracts are byte-identical.)
 
 Leave a row's header blank to inherit the default header name. Saving writes the
 whole `providers` field in one fenced revision-checked mutation, so a concurrent

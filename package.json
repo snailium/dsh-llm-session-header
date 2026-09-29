@@ -25,7 +25,7 @@
     "node": "^22.19 || >=24"
   },
   "scripts": {
-    "test": "node --test tests/test.mjs tests/config-update.test.mjs && node tests/integration.mjs && node tests/coexistence.mjs && node tests/compat-0.2.mjs",
+    "test": "node --test tests/test.mjs tests/config-update.test.mjs && node tests/integration.mjs && node tests/coexistence.mjs && node tests/slot-contract.mjs && node tests/compat-0.2.mjs",
     "test:0.2": "DSH_020=${DSH_020:-$HOME/.dsh/profiles/web} node tests/compat-0.2.mjs"
   },
   "keywords": [

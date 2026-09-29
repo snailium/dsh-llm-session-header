@@ -6,6 +6,25 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The settings card moved off `plugins.item` onto `plugins.row.config`**, keyed
+  `dsh-llm-session-header#llm-session-header`. The page's slot contract marks
+  `plugins.item` as *"OCCUPIED by the official settings pages, one companion
+  package per host-plane namespace; a bundle's configuration belongs in
+  `plugins.bundle.config` or `plugins.row.config` instead"*. As a third-party
+  bundle we were squatting the official list — the card showed up under
+  **Official**, which mislabelled it. It now appears where it belongs: the
+  `llm-session-header` component on our own bundle's page gains a **Configure**
+  button. (`plugins.row.config` rather than the `plugins.bundle.config` that was
+  suggested: the latter is keyed by package name for a *bundle-level* config and
+  is rendered with `view: 'page'` and **no `form`**, whereas our settings
+  namespace is the row id, so the row is the true owner.)
+  Verified rendering and a save-to-disk round trip on both dsh **0.1.7-rc.2** and
+  **0.2.0-rc.2**, whose slot contracts are byte-identical.
+- Dropped the now-dead `title` dictionary key: a keyed slot takes its heading
+  from the bundle patch, not from a slot `label`.
+
 ### Verified
 
 - **dsh `0.2.0-rc.2` compatibility — no changes required.** Audited every surface this plugin
