@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format loosely
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Verified
+
+- **dsh `0.2.0-rc.2` compatibility — no changes required.** Audited every surface this plugin
+  depends on. Byte-identical between 0.1.7-rc.2 and 0.2.0-rc.2: `dsh-llm` (the `llm/stream`
+  waterfall contract), `dsh-settings`, `dsh-api-settings-controller`, `dsh-client-ui-settings`,
+  `dsh-client-locale`. Only `dsh-client-ui-primitives` and `dsh-client-ui-plugin-manager`
+  moved, and the card renders correctly on the new ones.
+- Confirmed in an isolated 0.2.0 instance: the card renders every control, a save **persists to
+  the profile patch**, and a route added through the card *after* activation injects its header
+  on the next model call — verified on the wire at a header-recording mock.
+- Added `tests/compat-0.2.mjs`: validates the schema against a 0.2.0 install's schemastery,
+  asserts every field is a live volatile handle, asserts the write seam accepts a real boolean
+  and rejects a string, and proves an in-place save reaches the next resolve. Run it against a
+  specific install with `DSH_020=<prefix> npm run test:0.2`.
+
 ## [0.2.0] — 2026-09-28
 
 Verified against **dsh 0.1.7-rc.2** (session format 4).

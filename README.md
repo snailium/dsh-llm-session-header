@@ -9,9 +9,20 @@ implements conversation-affinity routing via a request header — SMG's
 
 | | |
 |---|---|
-| Verified against | dsh `0.1.7-rc.2` (session format 4) |
+| Verified against | dsh `0.1.7-rc.2` **and `0.2.0-rc.2`** (session format 4) |
 | Requires | Node `^22.19 \|\| >=24`; schemastery `>=3.18.4` for the settings card |
 | On older dsh | the plugin loads and injects as usual; the settings card is simply absent |
+
+Nothing needed to change for 0.2.0. The `llm/stream` contract, the settings service, the
+settings API controller and the client settings layer are all **byte-identical** between
+0.1.7-rc.2 and 0.2.0-rc.2; only the client primitives and plugin-manager bundles moved, and the
+card renders correctly on the new ones. Verified in an isolated 0.2.0 instance: the card
+renders every control, a save **persists to the profile patch**, and a route added through the
+card *after* activation injects its header on the next model call (checked on the wire at a
+header-recording mock).
+
+`npm test` runs `tests/compat-0.2.mjs`, which pins the schema and the live-save path against a
+0.2.0 install when one is pointed at: `DSH_020=<prefix> npm run test:0.2`.
 
 ## Why
 
