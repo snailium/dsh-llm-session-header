@@ -1,6 +1,6 @@
 {
   "name": "dsh-llm-session-header",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DeepSeek Harness plugin: attaches a stable per-conversation session header to model requests routed to configured providers. Header name is configurable, so one plugin serves SMG (X-SMG-Routing-Key), OpenCode (x-opencode-session), and any other header-based affinity router.",
   "repository": {
     "type": "git",

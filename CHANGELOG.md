@@ -6,6 +6,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-09-29
+
+### Changed
+
+- **First release published through CI, with provenance.** 0.3.0 was uploaded with a
+  long-lived token, so it carries no sigstore attestation; 0.3.1 and later are published by
+  the `Publish to npm` GitHub Actions workflow over npm Trusted Publishing (OIDC) and are
+  signed. No runtime change from 0.3.0 — the tree is identical, so this is a patch purely to
+  hand the release process over to CI.
+
 ## [0.3.0] — 2026-09-29
 
 ### Added
@@ -119,6 +129,7 @@ Verified against **dsh 0.1.7-rc.2** (session format 4).
   process-stable random uuid per session.
 - `debug` / `debugFile` diagnostics.
 
-[0.3.0]: https://github.com/snailium/dsh-llm-session-header/compare/v0.2.0...v0.3.0
+[0.3.1]: https://github.com/snailium/dsh-llm-session-header/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.3.0
 [0.2.0]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.2.0
 [0.1.0]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.1.0
