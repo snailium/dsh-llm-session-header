@@ -6,6 +6,21 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Declared the supported harness generations** as a peer dependency on
+  `@deepseek-ai/dsh-llm` — the package that provides the `llm` service this plugin
+  `inject`s, and the one whose version tracks the harness release exactly:
+
+  ```json
+  "@deepseek-ai/dsh-llm": "^0.1.7-rc.2 || >=0.2.0-rc.1 <0.2.1-0"
+  ```
+
+  That is `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.2.1-0`: the 0.1.7 line and the whole
+  0.2.0 line (rc.1, rc.2 and the final), and **not** 0.2.1+ or 0.3+. Both ends are
+  versions this plugin was actually verified against. Marked `optional`, so mounting
+  it never depends on npm resolving the harness family — dsh provides these itself.
+
 ### Fixed
 
 - **The settings card moved off `plugins.item` onto `plugins.row.config`**, keyed
