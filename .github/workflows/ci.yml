@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: suite (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+
+      # There IS something to install: `@deepseek-ai/schemastery` is a devDependency
+      # because `lib/index.js` imports it at module scope for its exported `Config`
+      # schema. Without this step the suite SHRINKS rather than failing loudly — a
+      # file whose import throws reports as one failing test and its remaining cases
+      # never run, so a missing install reads as a small red suite instead of a
+      # broken environment.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run suite
+        run: npm test
+
+      # The client half is a classic script (not ESM) that the Plugins page fetches
+      # as a browser asset, so nothing imports it and no test would catch a syntax
+      # error in it. `node --check` is the only thing that does.
+      - name: Syntax check
+        run: |
+          node --check lib/index.js
+          node --check lib/client.js
+
+      # A `files` gap ships a dead package: the files exist locally and are simply
+      # absent from the tarball, with no error anywhere. Both halves must be in it.
+      - name: Verify the packed tarball
+        run: |
+          set -euo pipefail
+          FILES=$(npm pack --dry-run --json | node -e '
+            let s = ""; process.stdin.on("data", d => s += d)
+            process.stdin.on("end", () => {
+              const files = JSON.parse(s)[0].files.map(f => f.path)
+              for (const required of ["lib/index.js", "lib/client.js", "cordis.patch.yml"]) {
+                if (!files.includes(required)) {
+                  console.error(`::error::${required} is missing from the tarball`)
+                  process.exit(1)
+                }
+              }
+              console.log("tarball contains:", files.join(", "))
+            })')
+          echo "$FILES"

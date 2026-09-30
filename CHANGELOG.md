@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-29
+
 ### Added
 
 - **Declared the supported harness generations** as a peer dependency on
@@ -117,5 +119,6 @@ Verified against **dsh 0.1.7-rc.2** (session format 4).
   process-stable random uuid per session.
 - `debug` / `debugFile` diagnostics.
 
+[0.3.0]: https://github.com/snailium/dsh-llm-session-header/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.2.0
 [0.1.0]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.1.0

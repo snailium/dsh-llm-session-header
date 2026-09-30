@@ -24,6 +24,13 @@ header-recording mock).
 `npm test` runs `tests/compat-0.2.mjs`, which pins the schema and the live-save path against a
 0.2.0 install when one is pointed at: `DSH_020=<prefix> npm run test:0.2`.
 
+> **Upgrading on a pnpm-managed profile.** dsh profiles installed with pnpm enforce a
+> supply-chain minimum-release-age policy, so a version published minutes ago is refused
+> until it is listed in `minimumReleaseAgeExclude` in
+> `~/.dsh/profiles/<profile>/pnpm-workspace.yaml`. Keep the **old** entry listed while you
+> upgrade — the policy checks the versions pinned in `pnpm-lock.yaml`, so replacing it too
+> early fails on the version you are leaving. Then restart the service that reads the profile.
+
 ## Why
 
 Some LLM relays pin every request sharing the same session header value to the
