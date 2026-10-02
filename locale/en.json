@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "LLM session header",
+    "description": "Attach a stable per-conversation session header to model requests routed to configured providers (SMG, OpenCode, and other affinity routers)."
+  }
+}

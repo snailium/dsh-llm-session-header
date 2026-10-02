@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "LLM 会话路由请求头",
+    "description": "为配置的模型路由附加稳定的每会话请求头，使多轮对话绑定到同一后端实例以保持 KV Cache 预热（SMG、OpenCode 等亲和路由）。"
+  }
+}
