@@ -62,6 +62,18 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      # The last line of defence before an immutable artifact goes out: the test
+      # suite exercises whatever is committed in lib/client.js, so a bundle that
+      # is stale relative to src/client/ would pass every check and still ship.
+      - name: Verify the committed client bundle matches src/client
+        run: |
+          set -euo pipefail
+          npm run build:client
+          if ! git diff --exit-code -- lib/client.js; then
+            echo "::error::lib/client.js is stale — run 'npm run build:client' and commit the result."
+            exit 1
+          fi
+
       - name: Test
         run: npm test
 

@@ -134,7 +134,7 @@ swapping the router behind a route a one-line config change:
 The plugin ships a settings card, so the whole mapping is editable from the
 Plugins page without touching YAML:
 
-**Plugins → Installed → dsh-llm-session-header → the `llm-session-header`
+**Plugins → Installed → LLM session header → the `llm-session-header`
 component → Configure.**
 
 The card edits:
@@ -142,6 +142,20 @@ The card edits:
 - the default header name, the value mode and the debug flag;
 - the route table itself — **Add route** appends a row, each row names a route
   key and (optionally) its own header, and **Remove** drops one.
+
+**Each route is picked from a dropdown** of the routes the deployment actually
+composes, so a typo cannot silently produce a route that never matches. The list
+is read from the composed configuration (the `llm-pi-ai` providers, the
+`agent-default-model` route, and the `llm-*` namespaces), not hardcoded. A route
+already in your config but not in that list is kept as its own option, and
+**+ Custom route…** switches a row to a free-text field for anything the list
+does not know about.
+
+> **The plugin's display name is localised.** `locale/en.json` and
+> `locale/zh.json` carry the title and description the Plugins page shows, so the
+> bundle appears as **"LLM session header"** / **"LLM 会话路由请求头"** rather
+> than as the package name. Anything keying on the package name in the UI — a
+> script, a bookmarklet, a test selector — must use the localised title instead.
 
 > **Why it lives on the row, not in the Official list.** The page's slot contract
 > marks `plugins.item` as *"OCCUPIED by the official settings pages, one companion
@@ -285,6 +299,15 @@ The client settings card is modularized under `src/client/`:
 - `lifecycle.js`: Plugin lifecycle hook and `plugins.row.config` slot registration (`apply`).
 
 To build the client bundle into `lib/client.js`, run `npm run build:client`.
+
+> **`lib/client.js` is a committed build artifact.** The browser only ever loads
+> that file, so editing `src/client/` without rebuilding ships a stale card —
+> and nothing fails: the bundle still parses and the tests still pass, because
+> they exercise whatever is committed. `tests/client-bundle.test.mjs` loads the
+> built bundle through a stub module loader (so a broken concatenation is caught
+> rather than assumed), and CI **and** the publish workflow both rebuild and
+> `git diff --exit-code lib/client.js`, so drift fails the build instead of
+> reaching npm.
 
 ### Settings Page Row Metadata
 

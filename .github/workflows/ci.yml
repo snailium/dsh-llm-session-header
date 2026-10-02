@@ -33,6 +33,20 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      # lib/client.js is a COMMITTED build artifact assembled from src/client/
+      # by scripts/build-client.js. Nothing else links the two, so editing a
+      # source module and forgetting to rebuild would ship a stale card with no
+      # error anywhere — the bundle still parses, it is just out of date.
+      - name: Verify the committed client bundle matches src/client
+        run: |
+          set -euo pipefail
+          npm run build:client
+          if ! git diff --exit-code -- lib/client.js; then
+            echo "::error::lib/client.js is stale — run 'npm run build:client' and commit the result."
+            exit 1
+          fi
+          echo "lib/client.js matches a fresh build of src/client/"
+
       - name: Run suite
         run: npm test
 
@@ -45,7 +59,8 @@ jobs:
           node --check lib/client.js
 
       # A `files` gap ships a dead package: the files exist locally and are simply
-      # absent from the tarball, with no error anywhere. Both halves must be in it.
+      # absent from the tarball, with no error anywhere. Both halves must be in it,
+      # plus the locale files the Plugins page reads for display metadata.
       - name: Verify the packed tarball
         run: |
           set -euo pipefail
@@ -53,7 +68,7 @@ jobs:
             let s = ""; process.stdin.on("data", d => s += d)
             process.stdin.on("end", () => {
               const files = JSON.parse(s)[0].files.map(f => f.path)
-              for (const required of ["lib/index.js", "lib/client.js", "cordis.patch.yml"]) {
+              for (const required of ["lib/index.js", "lib/client.js", "cordis.patch.yml", "locale/en.json"]) {
                 if (!files.includes(required)) {
                   console.error(`::error::${required} is missing from the tarball`)
                   process.exit(1)

@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-01
+
 ### Added
 
 - **Per-row DSH Settings Page Metadata (i18n)**: Added `locale/en.json` and `locale/zh.json` providing localized titles (`LLM session header` / `LLM 会话路由请求头`) and descriptions for DSH's Plugins page (`readPluginMeta`).
@@ -15,11 +17,22 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Client Bundle Modularization**: Split monolithic `lib/client.js` into modular source files in `src/client/` (`constants.js`, `locales.js`, `store.js`, `controller.js`, `card.js`, `lifecycle.js`), managed via `scripts/build-client.js` (`npm run build:client`).
 - **Selectable Provider Routes Dropdown**: In the settings card (`Routes → header names`), routes are now selectable from a dropdown populated dynamically from currently available provider routes (discovering routes from `llm-pi-ai`, `agent-default-model`, and `llm-*` namespaces). Includes fallback to custom text input (`+ 自定义路由…` / `+ Custom route…`) with seamless toggle back to list (`从列表选择` / `Select from list`).
 - **Async Disposable Stream Support**: Added `[Symbol.asyncDispose]` support to `withStore()`.
+- **A test for the BUILT bundle** (`tests/client-bundle.test.mjs`). The controller
+  tests import `src/client/controller.js` directly, so nothing checked the
+  concatenated `lib/client.js` the browser actually loads. It now goes through a stub
+  `window.__ModuleLoader__.load`, runs `apply`, and renders the registered card with
+  stub React — catching a concatenation that parses but fails at runtime.
 
 ### Changed
 
 - **ALS Context Preservation on Stream Teardown**: `withStore` now wraps `iterator.return(value)` within `als.run(store, ...)` to ensure context remains active during downstream cleanup.
 - **Fast-path Header Inspection**: `hasHeader` now uses fast-paths for native `Headers` instances and plain objects to avoid redundant `new Headers()` allocations on the hot request path.
+- **CI and the publish workflow now rebuild and diff `lib/client.js`.** The build
+  artifact is committed and the browser only loads that file, so editing
+  `src/client/` without rebuilding shipped a stale card while every existing check
+  stayed green. Drift now fails the build instead of reaching npm.
+- **The CI tarball check also asserts `locale/en.json`**, so a `files` gap in the
+  display metadata fails there rather than silently falling back to the package name.
 
 ## [0.3.1] — 2026-09-29
 
@@ -144,7 +157,8 @@ Verified against **dsh 0.1.7-rc.2** (session format 4).
   process-stable random uuid per session.
 - `debug` / `debugFile` diagnostics.
 
-[0.3.1]: https://github.com/snailium/dsh-llm-session-header/compare/v0.3.0...v0.3.1
+[0.4.0]: https://github.com/snailium/dsh-llm-session-header/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.3.1
 [0.3.0]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.3.0
 [0.2.0]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.2.0
 [0.1.0]: https://github.com/snailium/dsh-llm-session-header/releases/tag/v0.1.0
