@@ -259,15 +259,38 @@ inferred.
 ## Development
 
 ```bash
+# Run full test suite
 npm test
+
+# Build client bundle from src/client/
+npm run build:client
 ```
 
 | Layer | File | What it proves |
 |---|---|---|
-| Unit | `tests/test.mjs` | Config resolution, value modes, fetch injection, stream wrapping |
+| Unit | `tests/test.mjs` | Config resolution, value modes, fetch injection, stream wrapping, BoundedMap, and schema/locale metadata |
 | Config updates | `tests/config-update.test.mjs` | A live save reaches a running instance through volatile references |
 | Integration | `tests/integration.mjs` | Real `fetch` patch + **real HTTP** to a local mock; per-route headers |
+| Slot contract | `tests/slot-contract.mjs` | Verifies `plugins.row.config` registration and contract compliance |
 | Coexistence | `tests/coexistence.mjs` | Byte-parity with the original, and both mounted together |
+
+### Client Bundle Architecture (`src/client/`)
+
+The client settings card is modularized under `src/client/`:
+- `constants.js`: Slot keys (`PACKAGE`, `ENTRY_ID`), modes, default headers, and styles.
+- `locales.js`: Localization dictionaries (`en`, `zh`).
+- `store.js`: Minimal zustand-compatible state store (`createLocalStore`).
+- `controller.js`: Draft management and revision-checked save mutation (`CardController`).
+- `card.js`: Presentational React components (`LlmSessionHeaderCard`).
+- `lifecycle.js`: Plugin lifecycle hook and `plugins.row.config` slot registration (`apply`).
+
+To build the client bundle into `lib/client.js`, run `npm run build:client`.
+
+### Settings Page Row Metadata
+
+Row title and description shown on DSH's Plugins list page are resolved by `@deepseek-ai/dsh-app-boot` from `locale/en.json` and `locale/zh.json`:
+- English: `LLM session header`
+- Chinese: `LLM 会话路由请求头`
 
 The integration test boots the plugin, patches `fetch`, drives a real HTTP
 request through a local mock, and asserts per-route header routing. It covers

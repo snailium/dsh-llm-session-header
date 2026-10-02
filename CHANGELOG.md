@@ -6,6 +6,20 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Per-row DSH Settings Page Metadata (i18n)**: Added `locale/en.json` and `locale/zh.json` providing localized titles (`LLM session header` / `LLM 会话路由请求头`) and descriptions for DSH's Plugins page (`readPluginMeta`).
+- **Locale Exports**: Exported `./locale/*.json` in `package.json` `exports` and added `locale` to `files`.
+- **Schemastery Schema Metadata**: Enriched `Config` with `.default(...)` and `.description(...)` across all fields (`headerName`, `providers`, `mode`, `debug`, `debugFile`).
+- **Bounded UUID Cache**: Introduced `BoundedMap` for `uuidBySession` in `mode: 'uuid'` to prevent unbounded memory accumulation in long-running instances.
+- **Client Bundle Modularization**: Split monolithic `lib/client.js` into modular source files in `src/client/` (`constants.js`, `locales.js`, `store.js`, `controller.js`, `card.js`, `lifecycle.js`), managed via `scripts/build-client.js` (`npm run build:client`).
+- **Async Disposable Stream Support**: Added `[Symbol.asyncDispose]` support to `withStore()`.
+
+### Changed
+
+- **ALS Context Preservation on Stream Teardown**: `withStore` now wraps `iterator.return(value)` within `als.run(store, ...)` to ensure context remains active during downstream cleanup.
+- **Fast-path Header Inspection**: `hasHeader` now uses fast-paths for native `Headers` instances and plain objects to avoid redundant `new Headers()` allocations on the hot request path.
+
 ## [0.3.1] — 2026-09-29
 
 ### Changed
