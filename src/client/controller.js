@@ -57,14 +57,26 @@ export class CardController {
 		this.baseline = null; // first getSnapshot() of a draft session
 		this.saving = false;
 		this.failed = false;
+		this.customRows = new Set();
 		this.listeners = new Set();
 		this.unsubscribe = scope.subscribe(() => this.reseed());
+		this.describeUnsubscribe = null;
+		try {
+			const mirror = this.ctx?.configForms?.describe?.();
+			if (mirror && typeof mirror.subscribe === "function") {
+				this.describeUnsubscribe = mirror.subscribe(() => this.publish());
+			}
+		} catch {
+			// ignore
+		}
 		this.reseed();
 	}
 
 	dispose() {
 		if (this.unsubscribe) this.unsubscribe();
 		this.unsubscribe = null;
+		if (this.describeUnsubscribe) this.describeUnsubscribe();
+		this.describeUnsubscribe = null;
 	}
 
 	reseed() {
@@ -75,18 +87,63 @@ export class CardController {
 		if (this.draft === null) this.publish();
 	}
 
+	getAvailableRoutes() {
+		const routes = new Set();
+		try {
+			const snap = this.ctx?.configForms?.describe?.()?.getSnapshot?.();
+			const namespaces = snap?.view?.namespaces ?? snap?.namespaces ?? [];
+			for (const ns of namespaces) {
+				if (ns.ns === "llm-pi-ai" && ns.value?.providers && typeof ns.value.providers === "object") {
+					for (const key of Object.keys(ns.value.providers)) {
+						if (key && String(key).trim()) routes.add(String(key).trim());
+					}
+				} else if (ns.ns === "agent-default-model" && ns.value?.provider) {
+					routes.add(String(ns.value.provider).trim());
+				} else if (typeof ns.ns === "string" && ns.ns.startsWith("llm-") && ns.ns !== "llm-session-header") {
+					const routeName = ns.ns.slice(4);
+					if (routeName && routeName !== "deepseek-account") routes.add(routeName);
+				}
+			}
+		} catch {
+			// fallback gracefully
+		}
+
+		try {
+			const piAi = this.ctx?.configForms?.get?.("llm-pi-ai")?.getSnapshot?.();
+			const piAiProviders = piAi?.value?.providers;
+			if (piAiProviders && typeof piAiProviders === "object") {
+				for (const key of Object.keys(piAiProviders)) {
+					if (key && String(key).trim()) routes.add(String(key).trim());
+				}
+			}
+		} catch {
+			// fallback gracefully
+		}
+
+		for (const p of ["opencode", "opencode-go"]) {
+			routes.add(p);
+		}
+
+		return [...routes].sort((a, b) => a.localeCompare(b));
+	}
+
 	snapshot() {
 		const snap = this.scope.getSnapshot();
 		const value = snap.value ?? {};
 		const base = snap.base ?? {};
 		const d = this.draft ?? {};
-		const providers = d.providers !== undefined ? d.providers : rowsOf(value.providers);
+		const rawProviders = d.providers !== undefined ? d.providers : rowsOf(value.providers);
+		const providers = rawProviders.map((row, index) => ({
+			...row,
+			isCustom: this.customRows.has(index)
+		}));
 		return {
 			available: snap.status === "ready",
 			writable: Boolean(snap.writable),
 			saving: this.saving,
 			failed: this.failed,
 			dirty: this.dirty(),
+			availableRoutes: this.getAvailableRoutes(),
 			headerName: fieldState("headerName", d.headerName, value.headerName ?? DEFAULT_HEADER, base.headerName, (v) => String(v).trim() !== ""),
 			mode: fieldState("mode", d.mode, MODES.includes(value.mode) ? value.mode : "session-id", base.mode, (v) => MODES.includes(v)),
 			debug: { text: String(d.debug ?? Boolean(value.debug)), overridden: false, invalid: false },
@@ -157,10 +214,26 @@ export class CardController {
 		this.publish();
 	}
 
+	setCustomRoute(index, custom) {
+		this.beginDraft();
+		if (custom) {
+			this.customRows.add(index);
+		} else {
+			this.customRows.delete(index);
+		}
+		this.publish();
+	}
+
 	removeProvider(index) {
 		this.beginDraft();
 		const rows = (this.draft.providers ?? this.snapshot().providers).filter((_, i) => i !== index);
 		this.draft.providers = rows;
+		const nextCustom = new Set();
+		for (const i of this.customRows) {
+			if (i < index) nextCustom.add(i);
+			else if (i > index) nextCustom.add(i - 1);
+		}
+		this.customRows = nextCustom;
 		this.publish();
 	}
 
@@ -177,6 +250,7 @@ export class CardController {
 		this.draft = null;
 		this.baseline = null;
 		this.failed = false;
+		this.customRows.clear();
 		this.publish();
 	}
 
@@ -241,6 +315,7 @@ export class CardController {
 			if (landed) {
 				this.draft = null;
 				this.baseline = null;
+				this.customRows.clear();
 			} else {
 				this.failed = true;
 			}
@@ -257,6 +332,7 @@ export class CardController {
 			editMode: (mode) => this.editMode(mode),
 			toggleDebug: (value) => this.toggleDebug(value),
 			editProvider: (index, which, text) => this.editProvider(index, which, text),
+			setCustomRoute: (index, custom) => this.setCustomRoute(index, custom),
 			removeProvider: (index) => this.removeProvider(index),
 			addProvider: () => this.addProvider(),
 			save: () => this.save(),

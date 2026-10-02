@@ -13,6 +13,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Schemastery Schema Metadata**: Enriched `Config` with `.default(...)` and `.description(...)` across all fields (`headerName`, `providers`, `mode`, `debug`, `debugFile`).
 - **Bounded UUID Cache**: Introduced `BoundedMap` for `uuidBySession` in `mode: 'uuid'` to prevent unbounded memory accumulation in long-running instances.
 - **Client Bundle Modularization**: Split monolithic `lib/client.js` into modular source files in `src/client/` (`constants.js`, `locales.js`, `store.js`, `controller.js`, `card.js`, `lifecycle.js`), managed via `scripts/build-client.js` (`npm run build:client`).
+- **Selectable Provider Routes Dropdown**: In the settings card (`Routes → header names`), routes are now selectable from a dropdown populated dynamically from currently available provider routes (discovering routes from `llm-pi-ai`, `agent-default-model`, and `llm-*` namespaces). Includes fallback to custom text input (`+ 自定义路由…` / `+ Custom route…`) with seamless toggle back to list (`从列表选择` / `Select from list`).
 - **Async Disposable Stream Support**: Added `[Symbol.asyncDispose]` support to `withStore()`.
 
 ### Changed
