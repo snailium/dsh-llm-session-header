@@ -7,6 +7,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { readFileSync } from 'node:fs'
+
 import {
   name,
   inject,
@@ -16,6 +18,8 @@ import {
   hasHeader,
   patchFetch,
   withStore,
+  Config,
+  BoundedMap,
 } from '../lib/index.js'
 
 // ---------------------------------------------------------------- defaults
@@ -256,3 +260,111 @@ test('withStore tolerates a downstream that throws on return', async () => {
   const result = await wrapped.return()
   assert.equal(result.done, true)
 })
+
+test('withStore runs return inside ALS store', async () => {
+  const { AsyncLocalStorage } = await import('node:async_hooks')
+  const als = new AsyncLocalStorage()
+  let observedInReturn
+  const wrapped = withStore({
+    [Symbol.asyncIterator]() { return this },
+    async next() { return { done: false, value: 'ok' } },
+    async return() {
+      observedInReturn = als.getStore()?.value
+      return { done: true }
+    },
+  }, { header: 'x-session', value: 'sess-123' }, als)
+
+  await wrapped.return()
+  assert.equal(observedInReturn, 'sess-123')
+})
+
+test('withStore supports Symbol.asyncDispose within ALS store', async () => {
+  const { AsyncLocalStorage } = await import('node:async_hooks')
+  const als = new AsyncLocalStorage()
+  let disposedInStore
+  const wrapped = withStore({
+    [Symbol.asyncIterator]() { return this },
+    async next() { return { done: true } },
+    async [Symbol.asyncDispose]() {
+      disposedInStore = als.getStore()?.value
+    },
+  }, { header: 'x-session', value: 'sess-dispose' }, als)
+
+  await wrapped[Symbol.asyncDispose]()
+  assert.equal(disposedInStore, 'sess-dispose')
+})
+
+// ----------------------------------------------------------- BoundedMap tests
+
+test('BoundedMap respects maxSize and evicts oldest items', () => {
+  const map = new BoundedMap(3)
+  map.set('a', 1)
+  map.set('b', 2)
+  map.set('c', 3)
+  assert.equal(map.size, 3)
+  assert.deepEqual([...map.keys()], ['a', 'b', 'c'])
+
+  // Inserting 'd' should evict 'a'
+  map.set('d', 4)
+  assert.equal(map.size, 3)
+  assert.equal(map.has('a'), false)
+  assert.deepEqual([...map.keys()], ['b', 'c', 'd'])
+
+  // Updating existing key should not evict anything
+  map.set('b', 20)
+  assert.equal(map.size, 3)
+  assert.deepEqual([...map.keys()], ['b', 'c', 'd'])
+})
+
+// ------------------------------------------------------- hasHeader fast paths
+
+test('hasHeader works with Headers instance and plain objects', () => {
+  const headersObj = new Headers({ 'x-custom': 'foo', 'x-opencode-session': '123' })
+  assert.equal(hasHeader(undefined, { headers: headersObj }, 'X-Custom'), true)
+  assert.equal(hasHeader(undefined, { headers: headersObj }, 'x-opencode-session'), true)
+  assert.equal(hasHeader(undefined, { headers: headersObj }, 'x-missing'), false)
+
+  const plainObj = { 'X-SMG-Routing-Key': 'abc' }
+  assert.equal(hasHeader(undefined, { headers: plainObj }, 'x-smg-routing-key'), true)
+  assert.equal(hasHeader(undefined, { headers: plainObj }, 'X-SMG-ROUTING-KEY'), true)
+  assert.equal(hasHeader(undefined, { headers: plainObj }, 'x-missing'), false)
+
+  const arrayHeaders = [['X-Custom-Header', 'val']]
+  assert.equal(hasHeader(undefined, { headers: arrayHeaders }, 'x-custom-header'), true)
+  assert.equal(hasHeader(undefined, { headers: arrayHeaders }, 'x-other'), false)
+})
+
+// ---------------------------------------------------- DSH metadata & locale
+
+test('locale files exist and contain proper title and description metadata', () => {
+  const en = JSON.parse(readFileSync(new URL('../locale/en.json', import.meta.url), 'utf8'))
+  const zh = JSON.parse(readFileSync(new URL('../locale/zh.json', import.meta.url), 'utf8'))
+
+  assert.equal(en.meta?.title, 'LLM session header')
+  assert.ok(typeof en.meta?.description === 'string' && en.meta.description.length > 10)
+
+  assert.equal(zh.meta?.title, 'LLM 会话路由请求头')
+  assert.ok(typeof zh.meta?.description === 'string' && zh.meta.description.length > 10)
+
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.equal(pkg.exports['./locale/*.json'], './locale/*.json')
+  assert.ok(pkg.files.includes('locale'))
+})
+
+test('Config schema defines defaults and descriptions on all fields', () => {
+  assert.ok(Config.dict.headerName.meta.default === 'x-opencode-session')
+  assert.ok(typeof Config.dict.headerName.meta.description === 'string')
+
+  assert.ok(Array.isArray(Config.dict.providers.meta.default))
+  assert.ok(typeof Config.dict.providers.meta.description === 'string')
+
+  assert.ok(Config.dict.mode.meta.default === 'session-id')
+  assert.ok(typeof Config.dict.mode.meta.description === 'string')
+
+  assert.ok(Config.dict.debug.meta.default === false)
+  assert.ok(typeof Config.dict.debug.meta.description === 'string')
+
+  assert.ok(Config.dict.debugFile.meta.default === null)
+  assert.ok(typeof Config.dict.debugFile.meta.description === 'string')
+})
+
